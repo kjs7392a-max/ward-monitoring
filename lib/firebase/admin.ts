@@ -14,11 +14,16 @@ function getAdminApp(): App {
     _app = getApps()[0]
     return _app
   }
+  // Vercel 환경변수에서 private key 파싱 — 따옴표 제거 + \n 변환
+  const parsedKey = privateKey
+    .replace(/^["']|["']$/g, '')   // 앞뒤 따옴표 제거
+    .replace(/\\n/g, '\n')          // \n 문자열 → 실제 줄바꿈
+
   _app = initializeApp({
     credential: cert({
       projectId:   process.env.FIREBASE_ADMIN_PROJECT_ID!,
       clientEmail: process.env.FIREBASE_ADMIN_CLIENT_EMAIL!,
-      privateKey:  privateKey.replace(/\\n/g, '\n'),
+      privateKey:  parsedKey,
     }),
   })
   return _app
