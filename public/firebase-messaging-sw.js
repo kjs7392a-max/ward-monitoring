@@ -6,12 +6,12 @@ importScripts('https://www.gstatic.com/firebasejs/10.7.0/firebase-app-compat.js'
 importScripts('https://www.gstatic.com/firebasejs/10.7.0/firebase-messaging-compat.js')
 
 firebase.initializeApp({
-  apiKey:            'REPLACE_WITH_ACTUAL_API_KEY',
-  authDomain:        'kjs7392as.firebaseapp.com',
-  projectId:         'kjs7392as',
-  storageBucket:     'kjs7392as.appspot.com',
-  messagingSenderId: 'REPLACE_WITH_ACTUAL_SENDER_ID',
-  appId:             'REPLACE_WITH_ACTUAL_APP_ID',
+  apiKey:            'AIzaSyCNmqhB_-RbU0ZzeG5IW9SskKgp7PXF83s',
+  authDomain:        'ward-monitoring-985d0.firebaseapp.com',
+  projectId:         'ward-monitoring-985d0',
+  storageBucket:     'ward-monitoring-985d0.firebasestorage.app',
+  messagingSenderId: '679751013845',
+  appId:             '1:679751013845:web:3560ab835659c0aac1595c',
 })
 
 const messaging = firebase.messaging()
