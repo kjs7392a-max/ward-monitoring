@@ -1,5 +1,7 @@
 'use client'
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
+import { db } from '@/lib/firebase/client'
+import { collection, onSnapshot } from 'firebase/firestore'
 import { MOCK_SPACES, SIM_SCENARIOS } from '@/lib/data/mock'
 import { TOKENS } from '@/lib/data/tokens'
 import type { Space, EmergencyScenario } from '@/types/ward'
@@ -14,6 +16,25 @@ import SimSwitch from '@/components/dashboard/SimSwitch'
 export default function DashboardPage() {
   const [detailRoom, setDetailRoom] = useState<Space | null>(null)
   const [alarm, setAlarm] = useState<EmergencyScenario | null>(null)
+  const [assignments, setAssignments] = useState<Record<string, string>>({})
+
+  useEffect(() => {
+    const unsubscribe = onSnapshot(
+      collection(db, 'assignments'),
+      (snapshot) => {
+        const data: Record<string, string> = {}
+        snapshot.docs.forEach(doc => {
+          const d = doc.data()
+          data[doc.id] = d.nurseName ?? d.nurseEmail ?? '담당 간호사'
+        })
+        setAssignments(data)
+      },
+      (error) => {
+        console.error('담당 조회 실패:', error)
+      }
+    )
+    return unsubscribe
+  }, [])
 
   const handleTriggerAlarm = async (scenario: EmergencyScenario) => {
     // 1. 풀스크린 알람 표시
@@ -37,6 +58,11 @@ export default function DashboardPage() {
     }
   }
 
+  const spacesWithAssignments = MOCK_SPACES.map(s => ({
+    ...s,
+    nurse: assignments[s.id] !== undefined ? assignments[s.id] : s.nurse,
+  }))
+
   return (
     <div style={{
       minHeight: '100vh',
@@ -55,13 +81,13 @@ export default function DashboardPage() {
         borderRadius: 10,
         padding: '16px 18px',
       }}>
-        <SectionHeader icon="building" title="3병동 · 전체 공간" count={MOCK_SPACES.length} />
+        <SectionHeader icon="building" title="3병동 · 전체 공간" count={spacesWithAssignments.length} />
         <div style={{
           display: 'grid',
-          gridTemplateColumns: `repeat(${MOCK_SPACES.length}, minmax(0, 1fr))`,
+          gridTemplateColumns: `repeat(${spacesWithAssignments.length}, minmax(0, 1fr))`,
           gap: 14,
         }}>
-          {MOCK_SPACES.map(space => (
+          {spacesWithAssignments.map(space => (
             <SpaceCard
               key={space.id}
               space={space}
