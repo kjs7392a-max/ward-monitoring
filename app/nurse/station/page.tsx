@@ -3,13 +3,39 @@ import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { onNurseAuthChange } from '@/lib/firebase/auth'
 import StationPicker from '@/components/nurse/StationPicker'
+import NurseAlarmOverlay from '@/components/nurse/NurseAlarmOverlay'
 import { TOKENS } from '@/lib/data/tokens'
 import type { User } from 'firebase/auth'
+
+interface AlarmInfo { spaceTitle: string; category: string; detail?: string }
 
 export default function StationPage() {
   const [user, setUser] = useState<User | null>(null)
   const [checking, setChecking] = useState(true)
+  const [alarm, setAlarm] = useState<AlarmInfo | null>(null)
   const router = useRouter()
+
+  // 포그라운드 FCM 메시지 수신
+  useEffect(() => {
+    let unsubscribe: (() => void) | null = null
+    import('@/lib/firebase/client').then(({ getMessagingInstance }) => {
+      getMessagingInstance().then(messaging => {
+        if (!messaging) return
+        import('firebase/messaging').then(({ onMessage }) => {
+          unsubscribe = onMessage(messaging, payload => {
+            const n = payload.notification
+            const d = payload.data
+            setAlarm({
+              spaceTitle: d?.spaceTitle ?? n?.title ?? '알람',
+              category:   d?.category  ?? '',
+              detail:     n?.body ?? '',
+            })
+          })
+        })
+      })
+    })
+    return () => { unsubscribe?.() }
+  }, [])
 
   useEffect(() => {
     const unsub = onNurseAuthChange(u => {
@@ -49,6 +75,9 @@ export default function StationPage() {
         nurseName={user?.displayName ?? user?.email ?? ''}
         nurseEmail={user?.email ?? ''}
       />
+
+      {/* 포그라운드 알람 전체화면 팝업 */}
+      <NurseAlarmOverlay alarm={alarm} onAck={() => setAlarm(null)} />
     </div>
   )
 }

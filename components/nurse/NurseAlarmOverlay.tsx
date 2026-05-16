@@ -1,27 +1,42 @@
 'use client'
-import { useSearchParams, useRouter } from 'next/navigation'
-import { Suspense, useEffect, useState } from 'react'
+import { useEffect, useState } from 'react'
 import { TOKENS } from '@/lib/data/tokens'
-import { MOCK_SPACES } from '@/lib/data/mock'
 
-function AlarmContent() {
-  const params = useSearchParams()
-  const router = useRouter()
-  const spaceId = params.get('spaceId')
-  const space = MOCK_SPACES.find(s => s.id === spaceId)
+interface AlarmInfo {
+  spaceTitle: string
+  category: string
+  detail?: string
+}
+
+interface Props {
+  alarm: AlarmInfo | null
+  onAck: () => void
+}
+
+export default function NurseAlarmOverlay({ alarm, onAck }: Props) {
+  const [visible, setVisible] = useState(false)
   const [blink, setBlink] = useState(true)
 
   useEffect(() => {
-    const interval = setInterval(() => setBlink(b => !b), 600)
-    return () => clearInterval(interval)
-  }, [])
+    if (alarm) {
+      setVisible(true)
+      setBlink(true)
+      // 깜빡임 효과
+      const interval = setInterval(() => setBlink(b => !b), 600)
+      return () => clearInterval(interval)
+    } else {
+      setVisible(false)
+    }
+  }, [alarm])
+
+  if (!visible || !alarm) return null
 
   return (
     <div style={{
-      minHeight: '100vh',
-      background: blink ? 'rgba(180,0,0,0.95)' : 'rgba(120,0,0,0.95)',
-      transition: 'background 0.3s',
+      position: 'fixed', inset: 0, zIndex: 9999,
       display: 'flex', alignItems: 'center', justifyContent: 'center',
+      background: blink ? 'rgba(180,0,0,0.92)' : 'rgba(120,0,0,0.92)',
+      transition: 'background 0.3s',
       padding: 24,
     }}>
       <div style={{
@@ -30,6 +45,7 @@ function AlarmContent() {
         textAlign: 'center',
         boxShadow: '0 8px 40px rgba(0,0,0,0.4)',
       }}>
+        {/* 아이콘 */}
         <div style={{
           width: 72, height: 72, borderRadius: '50%',
           background: blink ? '#ef4444' : '#b91c1c',
@@ -43,23 +59,26 @@ function AlarmContent() {
 
         <div style={{
           fontSize: 13, fontWeight: 700, color: '#ef4444',
-          letterSpacing: 2, marginBottom: 8,
+          letterSpacing: 2, marginBottom: 8, textTransform: 'uppercase',
         }}>
           긴급 알람
         </div>
 
         <h1 style={{ fontSize: 24, fontWeight: 900, color: TOKENS.text, margin: '0 0 8px' }}>
-          {space?.title ?? '병동 알람'}
+          {alarm.spaceTitle}
         </h1>
-        <p style={{ fontSize: 15, color: TOKENS.textMuted, margin: '0 0 28px', lineHeight: 1.6 }}>
-          {space
-            ? `${space.title}에서 알람이 발생했습니다.`
-            : '알람이 발생했습니다.'
-          }<br />즉시 확인해주세요.
-        </p>
+        <h2 style={{ fontSize: 18, fontWeight: 700, color: '#b91c1c', margin: '0 0 16px' }}>
+          {alarm.category}
+        </h2>
+
+        {alarm.detail && (
+          <p style={{ fontSize: 14, color: TOKENS.textMuted, margin: '0 0 28px', lineHeight: 1.6 }}>
+            {alarm.detail}
+          </p>
+        )}
 
         <button
-          onClick={() => router.replace('/nurse/station')}
+          onClick={onAck}
           style={{
             width: '100%', padding: '16px 0',
             background: '#1a2740', color: '#fff',
@@ -72,13 +91,5 @@ function AlarmContent() {
         </button>
       </div>
     </div>
-  )
-}
-
-export default function AlarmPage() {
-  return (
-    <Suspense>
-      <AlarmContent />
-    </Suspense>
   )
 }
