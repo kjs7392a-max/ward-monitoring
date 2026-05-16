@@ -13,47 +13,59 @@ export default function StationPicker({ nurseId, nurseName, nurseEmail }: Props)
   const [selected, setSelected] = useState<string | null>(null)
   const [loading, setLoading] = useState(false)
   const [done, setDone] = useState(false)
+  const [pushEnabled, setPushEnabled] = useState(false)
   const [error, setError] = useState('')
 
   const handleAssign = async (spaceId: string, spaceTitle: string) => {
     setLoading(true)
     setError('')
+    let fcmToken: string | null = null
+
     try {
-      // 1. FCM 권한 요청 및 토큰 획득
-      const { getMessagingInstance } = await import('@/lib/firebase/client')
-      const messaging = await getMessagingInstance()
-      if (!messaging) throw new Error('이 기기는 푸시 알람을 지원하지 않습니다.')
+      // 1. FCM 권한 요청 및 토큰 획득 (선택적 — 실패해도 담당 등록은 진행)
+      try {
+        const { getMessagingInstance } = await import('@/lib/firebase/client')
+        const messaging = await getMessagingInstance()
+        if (messaging) {
+          const permission = await Notification.requestPermission()
+          if (permission === 'granted') {
+            const { getToken } = await import('firebase/messaging')
+            const swReg = await navigator.serviceWorker.register('/firebase-messaging-sw.js')
+            fcmToken = await getToken(messaging, {
+              vapidKey: process.env.NEXT_PUBLIC_FIREBASE_VAPID_KEY!,
+              serviceWorkerRegistration: swReg,
+            })
+          }
+        }
+      } catch {
+        // FCM 미지원 기기 — 담당 등록은 계속 진행
+        console.warn('FCM 초기화 실패 — 푸시 알람 없이 담당 등록')
+      }
 
-      const permission = await Notification.requestPermission()
-      if (permission !== 'granted') throw new Error('알람 권한을 허용해주세요.')
+      // 2. FCM 토큰이 있으면 서버에 저장
+      if (fcmToken) {
+        await fetch('/api/fcm/register', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ nurseId, nurseName, nurseEmail, fcmToken }),
+        })
+      }
 
-      const { getToken } = await import('firebase/messaging')
-      const swReg = await navigator.serviceWorker.register('/firebase-messaging-sw.js')
-      const fcmToken = await getToken(messaging, {
-        vapidKey: process.env.NEXT_PUBLIC_FIREBASE_VAPID_KEY!,
-        serviceWorkerRegistration: swReg,
-      })
-
-      // 2. FCM 토큰 서버에 저장
-      await fetch('/api/fcm/register', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ nurseId, nurseName, nurseEmail, fcmToken }),
-      })
-
-      // 3. 담당 스테이션 Firestore에 저장
+      // 3. 담당 스테이션 Firestore에 저장 (FCM 없어도 반드시 저장)
       const { db } = await import('@/lib/firebase/client')
       const { doc, setDoc } = await import('firebase/firestore')
       await setDoc(doc(db, 'assignments', spaceId), {
         nurseId,
         nurseName,
         nurseEmail,
-        fcmToken,
+        fcmToken: fcmToken ?? null,
+        pushEnabled: !!fcmToken,
         assignedAt: new Date().toISOString(),
       })
 
       setSelected(spaceId)
       setDone(true)
+      setPushEnabled(!!fcmToken)
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : '오류가 발생했습니다.'
       setError(message)
@@ -94,7 +106,7 @@ export default function StationPicker({ nurseId, nurseName, nurseEmail }: Props)
           color: '#163e6b', fontSize: 14, fontWeight: 600,
           display: 'flex', alignItems: 'center', justifyContent: 'space-between',
         }}>
-          <span>✅ {selectedSpace.title} 담당 등록 완료</span>
+          <span>✅ {selectedSpace.title} 담당 등록 완료{!pushEnabled ? ' (푸시 미지원 기기)' : ''}</span>
           <button
             onClick={handleUnassign}
             style={{ fontSize: 12, color: TOKENS.textMuted, background: 'none', border: 'none', cursor: 'pointer', textDecoration: 'underline', fontFamily: 'inherit' }}
