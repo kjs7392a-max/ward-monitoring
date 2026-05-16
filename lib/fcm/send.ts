@@ -1,4 +1,4 @@
-import { adminMessaging, adminDb } from '@/lib/firebase/admin'
+import { getAdminDb, getAdminMessaging } from '@/lib/firebase/admin'
 
 interface SendAlarmOptions {
   spaceId: string
@@ -11,14 +11,14 @@ interface SendAlarmOptions {
 export async function sendAlarmToAssignedNurse(
   opts: SendAlarmOptions
 ): Promise<{ sent: boolean; nurseId?: string }> {
-  const assignmentDoc = await adminDb.collection('assignments').doc(opts.spaceId).get()
+  const assignmentDoc = await getAdminDb().collection('assignments').doc(opts.spaceId).get()
   if (!assignmentDoc.exists) return { sent: false }
 
   const assignment = assignmentDoc.data()!
   const fcmToken: string = assignment.fcmToken
   if (!fcmToken) return { sent: false }
 
-  await adminMessaging.send({
+  await getAdminMessaging().send({
     token: fcmToken,
     notification: {
       title: `⚠️ ${opts.spaceTitle} ${opts.category}`,
@@ -47,13 +47,13 @@ export async function sendAlarmToAssignedNurse(
 
 /** 전체 간호사에게 FCM 푸시 (담당 없을 때 fallback) */
 export async function sendAlarmToAll(opts: SendAlarmOptions): Promise<void> {
-  const snapshot = await adminDb.collection('nurses').get()
+  const snapshot = await getAdminDb().collection('nurses').get()
   const tokens = snapshot.docs
     .map(d => d.data().fcmToken as string)
     .filter(Boolean)
   if (tokens.length === 0) return
 
-  await adminMessaging.sendEachForMulticast({
+  await getAdminMessaging().sendEachForMulticast({
     tokens,
     notification: {
       title: `⚠️ ${opts.spaceTitle} ${opts.category}`,

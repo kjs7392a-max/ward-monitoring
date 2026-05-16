@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { adminDb } from '@/lib/firebase/admin'
+import { getAdminDb } from '@/lib/firebase/admin'
 
 export async function POST(req: NextRequest) {
   const { nurseId, nurseName, nurseEmail, fcmToken } = await req.json()
@@ -11,7 +11,7 @@ export async function POST(req: NextRequest) {
     )
   }
 
-  await adminDb.collection('nurses').doc(nurseId).set(
+  await getAdminDb().collection('nurses').doc(nurseId).set(
     {
       nurseId,
       nurseName,
