@@ -1,0 +1,14 @@
+{
+  "name": "병동 모니터링",
+  "short_name": "병동모니터",
+  "description": "격리실 통합 모니터링 시스템",
+  "start_url": "/nurse",
+  "display": "standalone",
+  "background_color": "#e8eef5",
+  "theme_color": "#a9c4ec",
+  "orientation": "portrait",
+  "icons": [
+    { "src": "/icons/icon-192.png", "sizes": "192x192", "type": "image/png" },
+    { "src": "/icons/icon-512.png", "sizes": "512x512", "type": "image/png" }
+  ]
+}
