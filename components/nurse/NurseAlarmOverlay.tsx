@@ -21,9 +21,43 @@ export default function NurseAlarmOverlay({ alarm, onAck }: Props) {
     if (alarm) {
       setVisible(true)
       setBlink(true)
-      // 깜빡임 효과
-      const interval = setInterval(() => setBlink(b => !b), 600)
-      return () => clearInterval(interval)
+
+      // 알람 소리 (Web Audio API로 삐 소리 반복)
+      let audioCtx: AudioContext | null = null
+      let stopped = false
+      const playBeep = () => {
+        if (stopped) return
+        try {
+          audioCtx = new AudioContext()
+          const beep = (freq: number, start: number, dur: number) => {
+            const osc = audioCtx!.createOscillator()
+            const gain = audioCtx!.createGain()
+            osc.connect(gain)
+            gain.connect(audioCtx!.destination)
+            osc.frequency.value = freq
+            osc.type = 'sine'
+            gain.gain.setValueAtTime(0.8, audioCtx!.currentTime + start)
+            gain.gain.exponentialRampToValueAtTime(0.001, audioCtx!.currentTime + start + dur)
+            osc.start(audioCtx!.currentTime + start)
+            osc.stop(audioCtx!.currentTime + start + dur)
+          }
+          beep(880, 0, 0.2)
+          beep(880, 0.3, 0.2)
+          beep(880, 0.6, 0.4)
+        } catch { /* 미지원 무시 */ }
+      }
+      playBeep()
+      const soundInterval = setInterval(playBeep, 2000)
+
+      // 깜빡임
+      const blinkInterval = setInterval(() => setBlink(b => !b), 600)
+
+      return () => {
+        stopped = true
+        clearInterval(soundInterval)
+        clearInterval(blinkInterval)
+        audioCtx?.close()
+      }
     } else {
       setVisible(false)
     }

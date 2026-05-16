@@ -15,6 +15,26 @@ export default function StationPage() {
   const [alarm, setAlarm] = useState<AlarmInfo | null>(null)
   const router = useRouter()
 
+  // 화면 꺼짐 방지 (근무 중 화면 유지)
+  useEffect(() => {
+    let wakeLock: WakeLockSentinel | null = null
+    const requestWakeLock = async () => {
+      try {
+        if ('wakeLock' in navigator) {
+          wakeLock = await (navigator as Navigator & { wakeLock: { request: (type: string) => Promise<WakeLockSentinel> } }).wakeLock.request('screen')
+        }
+      } catch { /* 미지원 기기 무시 */ }
+    }
+    requestWakeLock()
+    // 화면이 다시 활성화되면 재요청
+    const handleVisibility = () => { if (document.visibilityState === 'visible') requestWakeLock() }
+    document.addEventListener('visibilitychange', handleVisibility)
+    return () => {
+      wakeLock?.release()
+      document.removeEventListener('visibilitychange', handleVisibility)
+    }
+  }, [])
+
   // 서비스워커로부터 알람 메시지 수신 (포그라운드 + 백그라운드 탭 모두 처리)
   useEffect(() => {
     if (!('serviceWorker' in navigator)) return
@@ -70,7 +90,10 @@ export default function StationPage() {
         display: 'flex', alignItems: 'center', justifyContent: 'space-between',
       }}>
         <span style={{ fontSize: 15, fontWeight: 800, color: TOKENS.text }}>병동 모니터링</span>
-        <span style={{ fontSize: 13, color: TOKENS.textMuted }}>{user?.email}</span>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+          <span style={{ width: 8, height: 8, borderRadius: '50%', background: '#22c55e', display: 'inline-block' }}/>
+          <span style={{ fontSize: 12, color: '#16a34a', fontWeight: 700 }}>근무 중 · 화면 유지</span>
+        </div>
       </div>
 
       <StationPicker
