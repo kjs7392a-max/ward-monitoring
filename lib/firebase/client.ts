@@ -18,7 +18,16 @@ export const auth = getAuth(app)
 export const db = getFirestore(app)
 
 export async function getMessagingInstance() {
-  const supported = await isSupported()
-  if (!supported) return null
-  return getMessaging(app)
+  try {
+    // Firebase isSupported()가 일부 기기에서 잘못 판단하는 경우가 있어 직접 체크
+    if (
+      typeof window === 'undefined' ||
+      !('serviceWorker' in navigator) ||
+      !('PushManager' in window) ||
+      !('Notification' in window)
+    ) return null
+    return getMessaging(app)
+  } catch {
+    return null
+  }
 }
