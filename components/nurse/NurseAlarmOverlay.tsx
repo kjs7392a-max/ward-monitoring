@@ -22,32 +22,46 @@ export default function NurseAlarmOverlay({ alarm, onAck }: Props) {
       setVisible(true)
       setBlink(true)
 
-      // 알람 소리 (Web Audio API로 삐 소리 반복)
+      // 병원 경고 알람 (Web Audio API — 삐삐삐 패턴 반복)
       let audioCtx: AudioContext | null = null
       let stopped = false
-      const playBeep = () => {
+
+      const playAlarm = () => {
         if (stopped) return
         try {
-          audioCtx = new AudioContext()
-          const beep = (freq: number, start: number, dur: number) => {
-            const osc = audioCtx!.createOscillator()
-            const gain = audioCtx!.createGain()
-            osc.connect(gain)
-            gain.connect(audioCtx!.destination)
-            osc.frequency.value = freq
-            osc.type = 'sine'
-            gain.gain.setValueAtTime(0.8, audioCtx!.currentTime + start)
-            gain.gain.exponentialRampToValueAtTime(0.001, audioCtx!.currentTime + start + dur)
-            osc.start(audioCtx!.currentTime + start)
-            osc.stop(audioCtx!.currentTime + start + dur)
+          if (!audioCtx || audioCtx.state === 'closed') {
+            audioCtx = new AudioContext()
           }
-          beep(880, 0, 0.2)
-          beep(880, 0.3, 0.2)
-          beep(880, 0.6, 0.4)
+          const ctx = audioCtx
+          const now = ctx.currentTime
+
+          const tone = (freq: number, start: number, dur: number, vol = 1.0) => {
+            const osc = ctx.createOscillator()
+            const gain = ctx.createGain()
+            osc.connect(gain)
+            gain.connect(ctx.destination)
+            osc.type = 'square'
+            osc.frequency.value = freq
+            gain.gain.setValueAtTime(vol, now + start)
+            gain.gain.setValueAtTime(vol, now + start + dur - 0.01)
+            gain.gain.linearRampToValueAtTime(0, now + start + dur)
+            osc.start(now + start)
+            osc.stop(now + start + dur)
+          }
+
+          // 삐-삐-삐-삐삐삐 패턴 (병원 코드 알람)
+          tone(1047, 0.00, 0.18)   // 도
+          tone(1047, 0.22, 0.18)   // 도
+          tone(1047, 0.44, 0.18)   // 도
+          tone(1319, 0.70, 0.12)   // 미
+          tone(1319, 0.86, 0.12)   // 미
+          tone(1319, 1.02, 0.12)   // 미
+          tone(1568, 1.20, 0.40)   // 솔 (길게)
         } catch { /* 미지원 무시 */ }
       }
-      playBeep()
-      const soundInterval = setInterval(playBeep, 2000)
+
+      playAlarm()
+      const soundInterval = setInterval(playAlarm, 2200)
 
       // 깜빡임
       const blinkInterval = setInterval(() => setBlink(b => !b), 600)
