@@ -15,26 +15,29 @@ export default function StationPage() {
   const [alarm, setAlarm] = useState<AlarmInfo | null>(null)
   const router = useRouter()
 
-  // 포그라운드 FCM 메시지 수신
+  // 서비스워커로부터 알람 메시지 수신 (포그라운드 + 백그라운드 탭 모두 처리)
   useEffect(() => {
-    let unsubscribe: (() => void) | null = null
-    import('@/lib/firebase/client').then(({ getMessagingInstance }) => {
-      getMessagingInstance().then(messaging => {
-        if (!messaging) return
-        import('firebase/messaging').then(({ onMessage }) => {
-          unsubscribe = onMessage(messaging, payload => {
-            const n = payload.notification
-            const d = payload.data
-            setAlarm({
-              spaceTitle: d?.spaceTitle ?? n?.title ?? '알람',
-              category:   d?.category  ?? '',
-              detail:     n?.body ?? '',
-            })
-          })
+    if (!('serviceWorker' in navigator)) return
+
+    const handler = (event: MessageEvent) => {
+      if (event.data?.type === 'WARD_ALARM') {
+        setAlarm({
+          spaceTitle: event.data.data?.spaceTitle ?? event.data.notification?.title ?? '병동 알람',
+          category:   event.data.data?.category   ?? '',
+          detail:     event.data.notification?.body ?? '',
         })
-      })
-    })
-    return () => { unsubscribe?.() }
+      }
+      if (event.data?.type === 'WARD_ALARM_TAP') {
+        setAlarm({
+          spaceTitle: '병동 알람',
+          category:   '확인 필요',
+          detail:     '즉시 확인해주세요.',
+        })
+      }
+    }
+
+    navigator.serviceWorker.addEventListener('message', handler)
+    return () => navigator.serviceWorker.removeEventListener('message', handler)
   }, [])
 
   useEffect(() => {
