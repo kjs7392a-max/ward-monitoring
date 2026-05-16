@@ -16,8 +16,25 @@ export default function DashboardPage() {
   const [alarm, setAlarm] = useState<EmergencyScenario | null>(null)
 
   const handleTriggerAlarm = async (scenario: EmergencyScenario) => {
+    // 1. 풀스크린 알람 표시
     setAlarm(scenario)
-    // FCM push will be wired in Task 14
+
+    // 2. 담당 간호사 폰에 FCM 푸시 전송
+    try {
+      await fetch('/api/alarm', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          spaceId:    scenario.spaceId,
+          spaceTitle: scenario.spaceTitle,
+          category:   scenario.category,
+          detail:     scenario.detail,
+        }),
+      })
+    } catch (err) {
+      console.error('FCM 전송 실패:', err)
+      // 알람 UI는 이미 표시됐으므로 푸시 실패해도 계속 진행
+    }
   }
 
   return (
